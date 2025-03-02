@@ -174,7 +174,7 @@ impl BumpAllocRef {
     }
 
     /// Gets the (custom) Vec ref that's currently able to be modified
-    pub fn top(&self) -> LiquidVecRef {
+    pub fn top(&mut self) -> LiquidVecRef {
         unsafe {
             LiquidVecRef {
                 alloc: self.ptr.as_mut().unwrap_unchecked()
@@ -183,19 +183,20 @@ impl BumpAllocRef {
     }
 
     unsafe fn data_range(&self) -> &[u8] {
-        let data_base = self.ptr.byte_add(size_of::<BumpAlloc>()) as *mut u8;
-        std::slice::from_raw_parts(data_base, ((*self.ptr).top_base as usize - data_base as usize) + (*self.ptr).top_size)
+        let data_base = self.ptr.byte_add(size_of::<BumpAlloc>()) as *const u8;
+        std::slice::from_raw_parts(data_base, self.data_size())
     }
 
     unsafe fn data_range_mut(&mut self) -> &mut [u8] {
         let data_base = self.ptr.byte_add(size_of::<BumpAlloc>()) as *mut u8;
-        std::slice::from_raw_parts_mut(data_base, ((*self.ptr).top_base as usize - data_base as usize) + (*self.ptr).top_size)
+        std::slice::from_raw_parts_mut(data_base, self.data_size())
     }
 
     /// The total number of data bytes allocated over the lifetime of the allocator
     pub fn data_size(&self) -> usize {
         unsafe {
-            self.data_range().len()
+            let data_base = self.ptr as usize + size_of::<BumpAlloc>();
+            ((*self.ptr).top_base as usize - data_base) + (*self.ptr).top_size
         }
     }
 
