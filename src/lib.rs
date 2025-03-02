@@ -68,6 +68,11 @@ impl <'alloc> LiquidVecRef<'alloc> {
         }
         self.alloc.top_size = len
     }
+
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        self.alloc.top_size
+    }
 }
 
 impl <'alloc> std::borrow::Borrow<[u8]> for LiquidVecRef<'alloc> {
@@ -139,10 +144,12 @@ pub struct BumpAllocRef {
 }
 
 impl BumpAllocRef {
+    /// New Bump allocator with at most ~4GB of stuff in it
     pub fn new() -> Self {
         Self::new_with_address_space(32)
     }
 
+    /// New Bump allocator with at most ~2^bits stuff in it
     pub fn new_with_address_space(bits: u8) -> Self {
         use libc::*;
         unsafe {
@@ -165,6 +172,7 @@ impl BumpAllocRef {
         }
     }
 
+    /// Gets the (custom) Vec ref that's currently able to be modified
     pub fn top(&self) -> LiquidVecRef {
         unsafe {
             LiquidVecRef {
@@ -183,12 +191,14 @@ impl BumpAllocRef {
         std::slice::from_raw_parts_mut(data_base, ((*self.ptr).top_base as usize - data_base as usize) + (*self.ptr).top_size)
     }
 
+    /// The total number of data bytes allocated over the lifetime of the allocator
     pub fn data_size(&self) -> usize {
         unsafe {
             self.data_range().len()
         }
     }
 
+    /// More than half of the address space is already used
     pub fn dangerous(&self) -> bool {
         unsafe {
             (self.data_size() + size_of::<BumpAlloc>()) > (*self.ptr).address_space/2
