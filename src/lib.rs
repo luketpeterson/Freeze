@@ -7,8 +7,9 @@ use libc;
 pub struct LiquidVecRef<'alloc> { alloc: &'alloc mut BumpAlloc }
 
 impl <'alloc> LiquidVecRef<'alloc> {
+    /// Consume the vector and produce a slice that can still be used; it's length is now fixed
     #[inline(always)]
-    pub fn finalize(self) -> &'alloc mut [u8] {
+    pub fn freeze(self) -> &'alloc mut [u8] {
         unsafe {
             let ret = std::ptr::slice_from_raw_parts_mut(self.alloc.top_base, self.alloc.top_size);
 
@@ -229,7 +230,7 @@ mod tests {
             v1.extend_from_within(..3);
             v1.deref_mut().reverse();
             v1.pop();
-            v1.finalize()
+            v1.freeze()
         };
 
         assert_eq!(s1, [3, 2, 1, 4, 3, 2]);
@@ -241,7 +242,7 @@ mod tests {
             v1.extend_from_within(..3);
             v1.deref_mut().reverse();
             v1.pop();
-            v1.finalize()
+            v1.freeze()
         };
 
         assert_eq!(s2, [30, 20, 10, 40, 30, 20]);
