@@ -1,6 +1,6 @@
 [package]
 name = "freeze"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "A mmap-backed bump allocator that allows compact and zero-realloc mutability of the top vector."

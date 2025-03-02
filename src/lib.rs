@@ -74,6 +74,11 @@ impl <'alloc> LiquidVecRef<'alloc> {
     pub fn len(&self) -> usize {
         self.alloc.top_size
     }
+
+    #[inline(always)]
+    pub fn set_len(&mut self, new_len: usize) {
+        self.alloc.top_size = new_len;
+    }
 }
 
 impl <'alloc> std::borrow::Borrow<[u8]> for LiquidVecRef<'alloc> {
@@ -174,7 +179,7 @@ impl BumpAllocRef {
     }
 
     /// Gets the (custom) Vec ref that's currently able to be modified
-    pub fn top(&mut self) -> LiquidVecRef {
+    pub fn top(&self) -> LiquidVecRef {
         unsafe {
             LiquidVecRef {
                 alloc: self.ptr.as_mut().unwrap_unchecked()
@@ -204,6 +209,22 @@ impl BumpAllocRef {
     pub fn dangerous(&self) -> bool {
         unsafe {
             (self.data_size() + size_of::<BumpAlloc>()) > (*self.ptr).address_space/2
+        }
+    }
+
+    pub fn shrink_to_allocated(&self) {
+        unsafe {
+            let last = (*self.ptr).top_base.add((*self.ptr).top_size);
+            let page_size = libc::sysconf(libc::_SC_PAGESIZE) as usize;
+            let fit = ((last as usize)/page_size + 1)*page_size;
+            let clearing = (*self.ptr).address_space - (fit - self.ptr as usize);
+            // println!("{:?} (data_size={}, address_space={}, page_size={}) and performing munmap({:?}, {})", self.ptr as usize, self.data_size(), (*self.ptr).address_space, page_size, fit, clearing);
+            // Don't remove. Both approaches work (and should keep working)
+            // assert_eq!(libc::mremap(self.ptr as _, (*self.ptr).address_space, (fit - self.ptr as usize), 0) as *mut u8, self.ptr as *mut u8);
+            if libc::munmap(fit as _, clearing) == -1 {
+                let cstring = libc::strerror(*libc::__errno_location());
+                panic!("{:?}", CString::from_raw(cstring));
+            }
         }
     }
 }
