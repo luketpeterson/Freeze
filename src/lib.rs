@@ -224,7 +224,7 @@ mod tests {
         let mut alloc = BumpAllocRef::new();
 
         let s1: &[u8] = {
-            let mut v1 = alloc.top();
+            let mut v1: LiquidVecRef = alloc.top();
             v1.extend_from_slice(&[1, 2, 3]);
             v1.extend_one(4);
             v1.extend_from_within(..3);
@@ -236,7 +236,7 @@ mod tests {
         assert_eq!(s1, [3, 2, 1, 4, 3, 2]);
 
         let s2: &[u8] = {
-            let mut v1 = alloc.top();
+            let mut v1: LiquidVecRef = alloc.top();
             v1.extend_from_slice(&[10, 20, 30]);
             v1.extend_one(40);
             v1.extend_from_within(..3);

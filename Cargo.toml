@@ -2,6 +2,14 @@
 name = "Freeze"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "A mmap-backed bump allocator that allows compact and zero-realloc mutability of the top vector."
+homepage = "https://github.com/Adam-Vandervorst/Freeze/"
+repository = "https://github.com/Adam-Vandervorst/Freeze/"
+readme = "README.md"
+keywords = ["alloc", "vec", "slice", "mmap"]
+categories = ["memory-management", "data-structures"]
+include = ["Cargo.toml", "README.md", "LICENSE", ".gitignore", "src/*"]
 
 [dependencies]
 libc = "0.2"
