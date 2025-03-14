@@ -1,4 +1,3 @@
-use std::ffi::CString;
 use std::slice::SliceIndex;
 use std::ops::{Deref, DerefMut};
 use libc;
@@ -161,12 +160,11 @@ impl BumpAllocRef {
         unsafe {
             let res = mmap(std::ptr::null_mut(), 1 << bits, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
             if res as i64 == -1 {
-                let cstring = strerror(*__errno_location());
-                panic!("{:?}", CString::from_raw(cstring));
-                // Err(std::str::from_utf8_unchecked(std::slice::from_raw_parts_mut(cstring, strlen(cstring)));
+                let err = std::io::Error::last_os_error();
+                panic!("freeze: mmap error occurred: {err}");
             }
             if res as i64 == 0 {
-                panic!("mmap returned nullptr")
+                panic!("freeze: mmap returned nullptr")
             }
             *(res as *mut BumpAlloc) = BumpAlloc {
                 address_space: 1 << bits,
@@ -222,8 +220,8 @@ impl BumpAllocRef {
             // Don't remove. Both approaches work (and should keep working)
             // assert_eq!(libc::mremap(self.ptr as _, (*self.ptr).address_space, (fit - self.ptr as usize), 0) as *mut u8, self.ptr as *mut u8);
             if libc::munmap(fit as _, clearing) == -1 {
-                let cstring = libc::strerror(*libc::__errno_location());
-                panic!("{:?}", CString::from_raw(cstring));
+                let err = std::io::Error::last_os_error();
+                panic!("freeze: munmap error occurred: {err}");
             }
         }
     }
@@ -243,7 +241,7 @@ mod tests {
 
     #[test]
     fn basis() {
-        let mut alloc = BumpAllocRef::new();
+        let alloc = BumpAllocRef::new();
 
         let s1: &[u8] = {
             let mut v1: LiquidVecRef = alloc.top();
