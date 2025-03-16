@@ -273,4 +273,64 @@ mod tests {
         assert_eq!(s2, [30, 20, 10, 40, 30, 20]);
         assert_eq!(alloc.data_size(), (s1.len() + s2.len()));
     }
+
+    //I was looking at the freeze crate, and it has some cool properties.  But it wasn't very
+    // clear how it was supposed to be used, based on the interface.
+    //
+    // Consider this: (I know it's wrong, but I think it illustrates how people might think it works.)
+    // ```
+    // let alloc = BumpAllocRef::new();
+    //
+    // let mut vec1 = alloc.top();
+    // let mut vec2 = alloc.top();
+    //
+    // vec1.extend_one(b'1');
+    // vec2.extend_one(b'2');
+    //
+    // assert_eq!(vec1[0], b'1');
+    // assert_eq!(vec2[0], b'2'); //WTF?!?
+    // ```
+    //
+    // I.e. the fact that the API lets me make two LiquidVec objects makes it feel like they
+    // should behave as independent objects. The fact that they're aliases to the same underlying
+    // object is confusing.  Also, it can lead to UB; See the `try_aliasing_ub` test.
+    //
+    //It seems to me that there are two directions you could take this to make the API sound,
+    // and also behave more like what people would expect (and maybe add some useful features along the way).
+    //
+    //The first option is to enforce at runtime that only one LiquidVec can exist at a time.  So
+    // the `top` method would be more like `new_liquid_vec`, which would panic if there were an
+    // unfrozen vec already out there.  And a `try_new` that would return an option.
+    //
+    //That has the added advantage that you could then allow each LiquidVec to take a generic `T`,
+    // and the `T` types on different vecs could be different from each other within the same allocator.
+    //
+    //The second option is to make the LiquidVecs function as `Writers`. This option would allow
+    // multiple Writer objects to exist, but enforce that all Writers must be dropped before a
+    // `frozen` slice can be created.  So the allocator would keep a counter of outstanding writers.
+    //
+    //If you go with the second option, then I think you should choose a different name from `LiquidVec`
+    // because `Vec` conveys the idea of some kind of ownership that doesn't exist in any conceptual
+    // form with this option.  I think calling it a `BufferWriter` or something makes more sense,
+    // especially because of the limit to `u8` data, which also cuts against the associations people
+    // have with `Vec`.
+    //
+    #[test]
+    fn try_aliasing_ub() {
+        let alloc = BumpAllocRef::new();
+
+        let mut liquid = alloc.top();
+        liquid.extend(b"Good data".into_iter().cloned());
+        let alias = &mut liquid[..];
+
+        let frozen = alloc.top().freeze();
+        assert_eq!(frozen, b"Good data");
+
+        //Did I just modify const data with safe code?????
+        alias.copy_from_slice(b"Bad data!");
+        assert_eq!(frozen, b"Good data");
+    }
+
+
+
 }
