@@ -158,7 +158,12 @@ impl BumpAllocRef {
     pub fn new_with_address_space(bits: u8) -> Self {
         use libc::*;
         unsafe {
-            let res = mmap(std::ptr::null_mut(), 1 << bits, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+            //NOTE: Changed the flags because miri only supports MAP_PRIVATE | MAP_ANONYMOUS.
+            // The original flags were MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, however, I think
+            // the new configuration should be fine for the needs of this crate, and won't have a
+            // performance impact based on what I've read.  This appears to be true on Mac, but
+            // I haven't tested on Linux.
+            let res = mmap(std::ptr::null_mut(), 1 << bits, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
             if res as i64 == -1 {
                 let err = std::io::Error::last_os_error();
                 panic!("freeze: mmap error occurred: {err}");
